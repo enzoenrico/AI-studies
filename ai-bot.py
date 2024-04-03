@@ -5,7 +5,7 @@ from langchain_community.llms import Ollama
 
 #declare the used llm
 model = Ollama(
-    model="llama2",
+    model="mistral",
     temperature=0.9,
 )
 
