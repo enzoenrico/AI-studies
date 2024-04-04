@@ -1,20 +1,34 @@
-from langchain_community.llms import Ollama
-from langchain_community.document_loaders import PyPDFLoader
-from langchain.chains.question_answering import load_qa_chain
+from langchain_community.llms.ollama import Ollama
+from langchain_community.document_loaders.web_base import WebBaseLoader
+from langchain_community.embeddings import huggingface
+from langchain.chains import RetrievalQA
 
-model = Ollama(
-    model="mistral",
-    temperature=0.9,
-)
-print("Model loaded")
+# splitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-pdf = PyPDFLoader("Resume.pdf")
-docs = pdf.load()
+# vectordb
+# from langchain.vectorstores import Chroma
+from langchain_community.vectorstores.chroma import Chroma
 
-chain = load_qa_chain(llm=model, verbose=True)
+ollama = Ollama(model="mistral")
 
-query = input("Ask me anything: \n")
+embeds = huggingface.HuggingFaceEmbeddings()
 
-res = chain.invoke({"input_documents": docs, "question": query})
+loader = WebBaseLoader("https://en.wikipedia.org/wiki/2023_Hawaii_wildfires")
+data = loader.load()
 
-print(res['output_text'])
+vectorstore = Chroma.from_documents(documents=data, embedding=embeds)
+
+splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=10)
+all_splits = splitter.split_documents(data)
+
+chain = RetrievalQA.from_chain_type(ollama, retriever=vectorstore.as_retriever())
+
+while True:
+    question = input("Ask a question: ")
+    if question == "exit":
+        break
+    res = chain.invoke({"query": question})
+    print('[MISTRAL]: ' + res['result'])
+# question = "when was hawaiis request for a major disaster declaration approved?"
+# print(chain.invoke({"query": question})['result'])
