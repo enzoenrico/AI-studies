@@ -1,34 +1,23 @@
-from langchain_community.llms.ollama import Ollama
-from langchain_community.document_loaders.web_base import WebBaseLoader
-from langchain_community.embeddings import huggingface
-from langchain.chains import RetrievalQA
+import ollama
 
-# splitter
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+modelfile = """
+FROM mistral 
+SYSTEM You are a senior Engineer at a oil and gas company, everything that you awnser is based on your experience in the oil and gas industry. 
+"""
 
-# vectordb
-# from langchain.vectorstores import Chroma
-from langchain_community.vectorstores.chroma import Chroma
-
-ollama = Ollama(model="mistral")
-
-embeds = huggingface.HuggingFaceEmbeddings()
-
-loader = WebBaseLoader("https://en.wikipedia.org/wiki/2023_Hawaii_wildfires")
-data = loader.load()
-
-vectorstore = Chroma.from_documents(documents=data, embedding=embeds)
-
-splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=10)
-all_splits = splitter.split_documents(data)
-
-chain = RetrievalQA.from_chain_type(ollama, retriever=vectorstore.as_retriever())
-
+print("Loading model...")
+ollama.create(model="mistral", modelfile=modelfile)
 while True:
-    question = input("Ask a question: ")
-    if question == "exit":
-        break
-    res = chain.invoke({"query": question})
-    print('[MISTRAL]: ' + res['result'])
-# question = "when was hawaiis request for a major disaster declaration approved?"
-# print(chain.invoke({"query": question})['result'])
+    userInput = input('[+]Ask me anything: \n')
+    res = ollama.chat(
+        model="mistral",
+        messages=[
+            {"role": "user", "content": userInput}
+        ],
+        stream=True,
+
+    )
+    print("[Ollama]: ", end="", flush=True)
+    for chunk in res:
+        print(chunk["message"]["content"], end="", flush=True)
+    print()
